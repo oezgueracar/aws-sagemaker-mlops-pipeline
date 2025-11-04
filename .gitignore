@@ -55,6 +55,9 @@ coverage.xml
 *.mo
 *.pot
 
+# AWS Lambda stuff:
+lambda-github-workflow-trigger.zip
+
 # Django stuff:
 *.log
 local_settings.py
