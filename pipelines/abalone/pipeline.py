@@ -215,7 +215,6 @@ def get_pipeline(
         arguments=[
             "--train", "/opt/ml/processing/input/train",
             "--validation", "/opt/ml/processing/input/validation",
-            "--label-col", "rings",
             "--model-dir", "/opt/ml/processing/model",
             "--num-round", "200",
             "--max-depth", "5",
@@ -238,7 +237,10 @@ def get_pipeline(
         sagemaker_session=pipeline_session,
         role=role,
     )
+    
     model_artifact_s3 = step_train.properties.ProcessingOutputConfig.Outputs["model"].S3Output.S3Uri
+    test_s3 = step_process.properties.ProcessingOutputConfig.Outputs["test"].S3Output.S3Uri
+    
     step_args = script_eval.run(
         inputs=[
             ProcessingInput(
@@ -246,9 +248,7 @@ def get_pipeline(
                 destination="/opt/ml/processing/model",
             ),
             ProcessingInput(
-                source=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "test"
-                ].S3Output.S3Uri,
+                source=test_s3,
                 destination="/opt/ml/processing/test",
             ),
         ],
