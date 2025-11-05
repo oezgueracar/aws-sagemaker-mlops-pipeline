@@ -1,7 +1,7 @@
 name: BuildSageMakerModel
 on:
   push:
-    branches: ['main', 'processing-train']
+    branches: ['main']
     paths:
       - pipelines/**
   workflow_dispatch:
