@@ -15,9 +15,13 @@ def parse_args():
     p.add_argument("--train", type=str, required=True)
     p.add_argument("--validation", type=str, required=False)
     p.add_argument("--model-dir", type=str, default="/opt/ml/processing/model")
-    p.add_argument("--num-round", type=int, default=200)
+    p.add_argument("--num-round", type=int, default=50)
     p.add_argument("--max-depth", type=int, default=5)
     p.add_argument("--eta", type=float, default=0.2)
+    p.add_argument("--gamma", type=float, default=4.0)
+    p.add_argument("--min-child-weight", dest="min_child_weight",
+               type=float, default=6.0)
+    p.add_argument("--subsample", type=float, default=0.7)
     return p.parse_args()
 
 def load_xy(folder, filename):
@@ -42,7 +46,15 @@ def main():
         dval = xgb.DMatrix(X_val, label=y_val)
         evals.append((dval, "validation"))
 
-    params = {"objective": "reg:squarederror", "max_depth": args.max_depth, "eta": args.eta, "verbosity": 1}
+    params = {
+        "objective": "reg:linear", 
+        "max_depth": args.max_depth, 
+        "eta": args.eta,
+        "gamma": args.gamma,
+        "min_child_weight": args.min_child_weight,
+        "subsample": args.subsample,
+        "verbosity": 1,
+    }
     bst = xgb.train(params=params, dtrain=dtrain, num_boost_round=args.num_round, evals=evals)
 
     # Save in SageMaker XGBoost serving format: model.tar.gz containing 'xgboost-model'
