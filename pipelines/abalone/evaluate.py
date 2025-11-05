@@ -1,4 +1,6 @@
 """Evaluation script for measuring mean squared error."""
+import sys, subprocess
+
 import json
 import logging
 import pathlib
@@ -15,7 +17,13 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+def _ensure(pkg):
+    try:
+        __import__(pkg)
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
 
+_ensure("xgboost")
 
 if __name__ == "__main__":
     logger.debug("Starting evaluation.")
