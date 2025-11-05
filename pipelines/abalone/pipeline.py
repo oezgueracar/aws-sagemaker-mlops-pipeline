@@ -31,7 +31,8 @@ from sagemaker.workflow.condition_step import (
     ConditionStep,
 )
 from sagemaker.workflow.functions import (
-    JsonGet,
+    JsonGet, 
+    Join,
 )
 from sagemaker.workflow.parameters import (
     ParameterInteger,
@@ -285,9 +286,19 @@ def get_pipeline(
         py_version="py3",
         instance_type=processing_instance_type,
     )
+
+    model_data = Join(
+        on="/",
+        values=[
+            step_train.properties.ProcessingOutputConfig
+                .Outputs["model"].S3Output.S3Uri,
+            "model.tar.gz",
+        ],
+    )
+
     model = Model(
         image_uri=xgb_serving_image,
-        model_data=f"{model_artifact_s3}/model.tar.gz",
+        model_data=model_data,
         sagemaker_session=pipeline_session,
         role=role,
     )
