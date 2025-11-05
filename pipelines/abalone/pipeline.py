@@ -184,7 +184,8 @@ def get_pipeline(
     sklearn_image = sagemaker.image_uris.retrieve(
         framework="sklearn",
         region=region,
-        version="1.2-1",
+        version="1.0-1",
+        py_version="py3",
         instance_type=processing_instance_type,
     )
 
@@ -279,8 +280,9 @@ def get_pipeline(
     xgb_serving_image = sagemaker.image_uris.retrieve(
         framework="xgboost",
         region=region,
-        version="1.7-1",
+        version="1.0-1",
         image_scope="inference",
+        py_version="py3",
         instance_type=processing_instance_type,
     )
     model = Model(
