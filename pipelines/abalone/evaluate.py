@@ -1,5 +1,7 @@
 """Evaluation script for measuring mean squared error."""
-import sys, subprocess
+import sys
+import os 
+import subprocess
 
 import json
 import logging
@@ -9,9 +11,6 @@ import tarfile
 
 import numpy as np
 import pandas as pd
-import xgboost
-
-from sklearn.metrics import mean_squared_error
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -25,14 +24,29 @@ def _ensure(pkg):
 
 _ensure("xgboost")
 
+import xgboost
+
+from sklearn.metrics import mean_squared_error
+
+def load_xy(folder, filename):
+    # headerless CSV; label is first column
+    df = pd.read_csv(os.path.join(folder, filename), header=None)
+    y = df.iloc[:, 0].to_numpy()
+    X = df.iloc[:, 1:].to_numpy()
+    return X, y
+
 if __name__ == "__main__":
     logger.debug("Starting evaluation.")
-    model_path = "/opt/ml/processing/model/model.tar.gz"
-    with tarfile.open(model_path) as tar:
+    
+    model_tar = "/opt/ml/processing/model/model.tar.gz"
+    with tarfile.open(model_tar) as tar:
         tar.extractall(path=".")
 
+    model_path = "/opt/ml/processing/model/xgboost-model"
+
     logger.debug("Loading xgboost model.")
-    model = pickle.load(open("xgboost-model", "rb"))
+    booster = xgboost.Booster()
+    booster.load_model("/opt/ml/processing/model/xgboost-model")
 
     logger.debug("Reading test data.")
     test_path = "/opt/ml/processing/test/test.csv"
@@ -44,7 +58,7 @@ if __name__ == "__main__":
     X_test = xgboost.DMatrix(df.values)
 
     logger.info("Performing predictions against test data.")
-    predictions = model.predict(X_test)
+    predictions = booster.predict(X_test)
 
     logger.debug("Calculating mean squared error.")
     mse = mean_squared_error(y_test, predictions)
