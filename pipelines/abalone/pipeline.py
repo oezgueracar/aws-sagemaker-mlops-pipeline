@@ -129,7 +129,7 @@ def get_pipeline(
     pipeline_name="AbalonePipeline",
     base_job_prefix="Abalone",
     processing_instance_type="ml.t3.medium",
-    training_instance_type="ml.t3.medium",
+    #training_instance_type="ml.t3.medium",
 ):
     """Gets a SageMaker ML Pipeline instance working with on abalone data.
 
@@ -180,58 +180,56 @@ def get_pipeline(
         step_args=step_args,
     )
 
-    # training step for generating model artifacts
-    model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/AbaloneTrain"
-    image_uri = sagemaker.image_uris.retrieve(
-        framework="xgboost",
+    # training step for generating model artifacts VIA PROCESSING
+    sklearn_image = sagemaker.image_uris.retrieve(
+        framework="sklearn",
         region=region,
-        version="1.0-1",
-        py_version="py3",
-        instance_type=training_instance_type,
+        version="1.2-1",
+        instance_type=processing_instance_type,
     )
-    xgb_train = Estimator(
-        image_uri=image_uri,
-        instance_type=training_instance_type,
+
+    train_processor = ScriptProcessor(
+        image_uri=sklearn_image,
+        command=["python3"],
+        instance_type=processing_instance_type,
         instance_count=1,
-        output_path=model_path,
-        base_job_name=f"{base_job_prefix}/abalone-train",
+        base_job_name=f"{base_job_prefix}/abalone-train-proc",
         sagemaker_session=pipeline_session,
         role=role,
     )
-    xgb_train.set_hyperparameters(
-        objective="reg:linear",
-        num_round=50,
-        max_depth=5,
-        eta=0.2,
-        gamma=4,
-        min_child_weight=6,
-        subsample=0.7,
-        silent=0,
+
+    # S3 URIs from preprocess outputs
+    train_s3 = step_process.properties.ProcessingOutputConfig.Outputs["train"].S3Output.S3Uri
+    val_s3   = step_process.properties.ProcessingOutputConfig.Outputs["validation"].S3Output.S3Uri
+
+    step_args = train_processor.run(
+        inputs=[
+            ProcessingInput(input_name="train",      source=train_s3, destination="/opt/ml/processing/input/train"),
+            ProcessingInput(input_name="validation", source=val_s3,   destination="/opt/ml/processing/input/validation"),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="model", source="/opt/ml/processing/model"),
+        ],
+        code=os.path.join(BASE_DIR, "train_processing.py"),
+        arguments=[
+            "--train", "/opt/ml/processing/input/train",
+            "--validation", "/opt/ml/processing/input/validation",
+            "--label-col", "rings",
+            "--model-dir", "/opt/ml/processing/model",
+            "--num-round", "200",
+            "--max-depth", "5",
+            "--eta", "0.2",
+        ],
     )
-    step_args = xgb_train.fit(
-        inputs={
-            "train": TrainingInput(
-                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "train"
-                ].S3Output.S3Uri,
-                content_type="text/csv",
-            ),
-            "validation": TrainingInput(
-                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "validation"
-                ].S3Output.S3Uri,
-                content_type="text/csv",
-            ),
-        },
-    )
-    step_train = TrainingStep(
+
+    step_train = ProcessingStep(
         name="TrainAbaloneModel",
         step_args=step_args,
     )
 
     # processing step for evaluation
     script_eval = ScriptProcessor(
-        image_uri=image_uri,
+        image_uri=sklearn_image,
         command=["python3"],
         instance_type=processing_instance_type,
         instance_count=1,
@@ -239,10 +237,11 @@ def get_pipeline(
         sagemaker_session=pipeline_session,
         role=role,
     )
+    model_artifact_s3 = step_train.properties.ProcessingOutputConfig.Outputs["model"].S3Output.S3Uri
     step_args = script_eval.run(
         inputs=[
             ProcessingInput(
-                source=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+                source=model_artifact_s3,
                 destination="/opt/ml/processing/model",
             ),
             ProcessingInput(
@@ -277,9 +276,16 @@ def get_pipeline(
             content_type="application/json"
         )
     )
+    xgb_serving_image = sagemaker.image_uris.retrieve(
+        framework="xgboost",
+        region=region,
+        version="1.7-1",
+        image_scope="inference",
+        instance_type=processing_instance_type,
+    )
     model = Model(
-        image_uri=image_uri,
-        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        image_uri=xgb_serving_image,
+        model_data=model_artifact_s3,
         sagemaker_session=pipeline_session,
         role=role,
     )
@@ -319,7 +325,7 @@ def get_pipeline(
         parameters=[
             processing_instance_type,
             processing_instance_count,
-            training_instance_type,
+            #training_instance_type,
             model_approval_status,
             input_data,
         ],
