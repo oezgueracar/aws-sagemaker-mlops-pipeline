@@ -287,7 +287,7 @@ def get_pipeline(
     )
     model = Model(
         image_uri=xgb_serving_image,
-        model_data=model_artifact_s3,
+        model_data=f"{model_artifact_s3}/model.tar.gz",
         sagemaker_session=pipeline_session,
         role=role,
     )
