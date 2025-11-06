@@ -281,7 +281,7 @@ def get_pipeline(
     xgb_serving_image = sagemaker.image_uris.retrieve(
         framework="xgboost",
         region=region,
-        version="latest",
+        version="1.5-1",
         image_scope="inference",
         py_version="py3",
         instance_type=processing_instance_type,
