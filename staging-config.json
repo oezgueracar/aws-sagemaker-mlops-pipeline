@@ -2,6 +2,6 @@
   "Parameters": {
     "StageName": "staging",
     "EndpointInstanceCount": "1",
-    "EndpointInstanceType": "ml.t2.medium"
+    "EndpointInstanceType": "ml.m5.large"
   }
 }
