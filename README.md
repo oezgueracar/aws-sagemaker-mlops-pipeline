@@ -1,12 +1,14 @@
 ## Purpose
-This is a sample code repository that demonstrates how to organize code for an ML business solution. This code repository is created as part of creating a Project in SageMaker. It's intended to showcase an understanding of MLOps concepts and an understanding of AWS SageMaker. It follows the [AWS Blogs MLOps Guide](https://github.com/aws-samples/mlops-sagemaker-github-actions).
+This is a sample code repository that demonstrates how to organize code for an ML business solution. This code repository is created as part of creating a Project in SageMaker. It's intended to showcase an understanding of MLOps concepts and an understanding of AWS SageMaker. It mostly follows the [AWS Blogs MLOps Guide](https://github.com/aws-samples/mlops-sagemaker-github-actions).
+
+In particular, the intention of this project is to acquire and demonstrate end-to-end MLOps skills with AWS SageMaker. I set up a pipeline on AWS SageMaker (from data to model registry), and did CI/CD with GitHub Actions to build and deploy the model from staging to prod.
 
 ## Architecture Overview
 ![Amazon SageMaker and GitHub Actions Architecture](/img/pipeline.png)
 
 Each commit with changes in the `pipelines/` folder triggers the GitHub workflow `BuildSageMakerModel` defined in `.github/workflows/build.yml`. This workflow is triggering an AWS Sagemaker pipeline to preprocess the data, train the model, evaluate it and then register the model within the model registry if the model performed well enough. From there, the model needs a manual approval through Sagemaker. After the manual approval, the GitHub workflow `DeploySageMakerModel` consisting of 2 jobs needs to be triggered manually to prepare the model for the staging and production environments. After being successfully deployed to staging through the first job, the deployment from staging to production (2nd job) needs an additional review through GitHub.
 
-## Description
+## Project and Model Description
 In this example, the abalone age prediction problem using the abalone dataset (see below for more on the dataset) is solved. The following section provides an overview of how the code is organized. In particular, `pipelines/pipelines.py` contains the core of the business logic for this problem. It has the code to express the ML steps involved in generating an ML model.
 
 A description of some of the artifacts is provided below:
@@ -18,7 +20,7 @@ This file contains the instructions needed to kick off an execution of the SageM
 ```
 
 <br/><br/>
-Pipeline artifacts, which includes a pipeline module defining the required `get_pipeline` method that returns an instance of a SageMaker pipeline, a preprocessing script that is used in feature engineering, and a model evaluation script to measure the Mean Squared Error of the model that's trained by the pipeline. This is the core business logic.
+Pipeline artifacts, which includes a pipeline module defining the required `get_pipeline` method that returns an instance of a SageMaker pipeline, a preprocessing script that is used in feature engineering, and a model evaluation script to measure the Mean Squared Error of the model that's trained by the pipeline. Since no instances for training were available for the free tier on AWS, the training is done through a "processing" step with an additional script. This is the core business logic.
 
 
 ```
@@ -27,7 +29,8 @@ Pipeline artifacts, which includes a pipeline module defining the required `get_
 |   |   |-- evaluate.py
 |   |   |-- __init__.py
 |   |   |-- pipeline.py
-|   |   `-- preprocess.py
+|   |   |-- preprocess.py
+|   |   `-- train_processing.py
 
 ```
 <br/><br/>
