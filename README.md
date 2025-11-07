@@ -3,23 +3,69 @@ This is a sample code repository that demonstrates how to organize code for an M
 
 In particular, the intention of this project is to acquire and demonstrate end-to-end MLOps skills with AWS SageMaker. I set up a pipeline on AWS SageMaker (from data to model registry), and did CI/CD with GitHub Actions to build and deploy the model from staging to prod.
 
+### What this showcases
+- **SageMaker Pipelines:** process/train → evaluate → register
+- **Model Registry:** versioned model referenced by deploy workflow
+- **CI/CD with GitHub Actions:** build/update pipeline; deploy to staging → production
+- **SageMaker Endpoints:** serve staging and production endpoints
+
 ## Architecture Overview
 ![Amazon SageMaker and GitHub Actions Architecture](/img/pipeline.png)
 
-Each commit with changes in the `pipelines/` folder triggers the GitHub workflow `BuildSageMakerModel` defined in `.github/workflows/build.yml`. This workflow is triggering an AWS Sagemaker pipeline to preprocess the data, train the model, evaluate it and then register the model within the model registry if the model performed well enough. From there, the model needs a manual approval through Sagemaker. After the manual approval, the GitHub workflow `DeploySageMakerModel` consisting of 2 jobs needs to be triggered manually to prepare the model for the staging and production environments. After being successfully deployed to staging through the first job, the deployment from staging to production (2nd job) needs an additional review through GitHub.
+Each commit with changes in the `pipelines/` folder triggers the GitHub workflow `BuildSageMakerModel` defined in `.github/workflows/build.yml`. This workflow is triggering an AWS SageMaker pipeline to preprocess the data, train the model, evaluate it and then register the model within the model registry if the model performed well enough. From there, the model needs a manual approval through SageMaker. After the manual approval, the GitHub workflow `DeploySageMakerModel` consisting of 2 jobs needs to be triggered manually to prepare the model for the staging and production environments. After being successfully deployed to staging through the first job, the deployment from staging to production (2nd job) needs an additional review through GitHub.
+
+## Results & Evidence
+
+1. Successful SageMaker pipeline execution
+
+    ![Amazon SageMaker and GitHub Actions Architecture](/img/successful-sagemaker-pipeline-execution.png)
+
+    Note: The training step is a "Process data" step because the AWS free tier doesn't provide training quota. It's circumventing that by making the training step a process data step.
+
+2. Model Registry
+
+    ![Amazon SageMaker and GitHub Actions Architecture](/img/model-registry.png)
+
+3. GitHub CI/CD
+
+    ![Amazon SageMaker and GitHub Actions Architecture](/img/github-cicd.png)
+
+4. Endpoints in service
+
+    ![Amazon SageMaker and GitHub Actions Architecture](/img/sagemaker-endpoints-running.png)
+
+5. Inference through production Endpoint
+
+    Run the production endpoint from a Terminal. AWS CLI needs to be installed if run locally.
+    Replace `type` with `cat` to run on bash instead of Windows. Make sure it runs on the correct region, otherwise also add the `--region <your-region>` parameter.
+
+    ```
+    aws sagemaker-runtime invoke-endpoint --endpoint-name aws-sagemaker-mlops-pipeline-prod --content-type text/csv --cli-binary-format raw-in-base64-out --body "0.383148412,0.273297349,-0.227545026,-0.153451984,-0.046713787,-0.046474046,-0.322093154,0,0,1" out.json && type out.json
+    ```
+
+    This will return something like:
+    ```
+    {
+        "ContentType": "text/csv; charset=utf-8",
+        "InvokedProductionVariant": "AllTraffic"
+    }
+
+    9.27243709564209
+    ```
+    Note: This is a real sample, the correct number of rings of this abalone is 10.
 
 ## Project and Model Description
-In this example, the abalone age prediction problem using the abalone dataset (see below for more on the dataset) is solved. The following section provides an overview of how the code is organized. In particular, `pipelines/pipelines.py` contains the core of the business logic for this problem. It has the code to express the ML steps involved in generating an ML model.
+In this example, the abalone age prediction problem using the abalone dataset (see below for more on the dataset) is solved. The following section provides an overview of how the code is organized. In particular, `pipelines/abalone/pipeline.py` contains the core of the business logic for this problem. It has the code to express the ML steps involved in generating an ML model.
 
 A description of some of the artifacts is provided below:
-<br/><br/>
-This file contains the instructions needed to kick off an execution of the SageMaker Pipeline in the CICD system (via CodePipeline). This file has the fields definined for naming the Pipeline, ModelPackageGroup etc.
+
+This file contains the instructions needed to kick off an execution of the SageMaker Pipeline in the CI/CD system (via GitHub Actions). This file has the fields defined for naming the Pipeline, ModelPackageGroup etc.
 
 ```
 .github/workflows/build.yml
 ```
 
-<br/><br/>
+
 Pipeline artifacts, which includes a pipeline module defining the required `get_pipeline` method that returns an instance of a SageMaker pipeline, a preprocessing script that is used in feature engineering, and a model evaluation script to measure the Mean Squared Error of the model that's trained by the pipeline. Since no instances for training were available for the free tier on AWS, the training is done through a "processing" step with an additional script. This is the core business logic.
 
 
@@ -33,7 +79,7 @@ Pipeline artifacts, which includes a pipeline module defining the required `get_
 |   |   `-- train_processing.py
 
 ```
-<br/><br/>
+
 Utility modules for getting pipeline definition jsons and running pipelines (no need for further modification):
 
 ```
@@ -44,19 +90,20 @@ Utility modules for getting pipeline definition jsons and running pipelines (no 
 |   |-- _utils.py
 |   `-- __version__.py
 ```
-<br/><br/>
+
 Python package artifacts:
 ```
 |-- setup.cfg
 |-- setup.py
 ```
-<br/><br/>
+
 A stubbed testing module for testing the pipeline:
 ```
 |-- tests
+|   |-- test_endpoints.py
 |   `-- test_pipelines.py
 ```
-<br/><br/>
+
 The `tox` testing framework configuration:
 ```
 tox.ini
@@ -64,36 +111,24 @@ tox.ini
 
 ## Deploying the model
 
-This is a sample code repository for demonstrating how to organize code for deploying a realtime inference Endpoint infrastructure.
+This code repository defines the CloudFormation template which defines the Endpoints as infrastructure. It has configuration files associated with `staging` and `prod` stages. 
 
-This code repository has the code to find the latest approved ModelPackage for the associated ModelPackageGroup and automatically deploy it to the Endpoint on detecting a change (`build.py`). This code repository also defines the CloudFormation template which defines the Endpoints as infrastructure. It also has configuration files associated with `staging` and `prod` stages. 
-
-Upon triggering a deployment, the CodePipeline pipeline will deploy 2 Endpoints - `staging` and `prod`. After the first deployment is completed, the CodePipeline waits for a manual approval step for promotion to the prod stage.
+Upon triggering a manual deployment, the GitHub Actions pipeline will deploy 2 Endpoints - `staging` and `prod`. After the first deployment is completed, GitHub waits for a manual approval step for promotion to the prod stage.
 
 A description of some of the artifacts is provided below:
-The GitHub Actions workflow to build and deploy Endpoints.
 
-```
-.github/workflows/deploy.yml
-```
+`.github/workflows/deploy.yml`  
+  - Orchestrates the deployment steps (staging first; production after).
 
-```
-build.py
-```
- - this python file contains code to get the latest approve package arn and exports staging and configuration files. This is invoked from the Build stage.
+`build_deployment_configs.py`
+  - Reads the base stage configs in this repo, `staging-config.json` and `prod-config.json`, and extends them at runtime with the latest ModelPackageArn, the execution role, and project tags.  
+  It writes runtime files (`*-config-export.json`) that the deploy step consumes. 
+
+`deploy_stack.py`
+  - Takes the runtime export JSON (passed as `--param-file`) and creates/updates a CloudFormation stack using `endpoint-config-template.yml` that provisions the SageMaker Model, EndpointConfig, and Endpoint.
 
 `endpoint-config-template.yml`
- - this CloudFormation template file is packaged by the build step in the CodePipeline and is deployed in different stages.
-
-`staging-config.json`
- - this configuration file is used to customize `staging` stage in the pipeline. Configure the instance type, instance count here.
-
-`prod-config.json`
- - this configuration file is used to customize `prod` stage in the pipeline. Configure the instance type, instance count here.
-
-`test\test.py`
-  - this python file contains code to describe and invoke the staging endpoint.
-
+  - CloudFormation template used by the deploy workflow in each stage.
 
 ## Dataset for the Example Abalone Pipeline
 
@@ -104,3 +139,10 @@ The dataset contains several features - length (longest shell measurement), diam
 The number of rings turns out to be a good approximation for age (age is rings + 1.5). However, to obtain this number requires cutting the shell through the cone, staining the section, and counting the number of rings through a microscope -- a time-consuming task. However, the other physical measurements are easier to determine. The dataset is used to build a predictive model of the variable rings through these other physical measurements.
 
 [1] Dua, D. and Graff, C. (2019). [UCI Machine Learning Repository](http://archive.ics.uci.edu/ml). Irvine, CA: University of California, School of Information and Computer Science.
+
+## Outlook / TODO
+
+- Auto-deploy on approval: When a new model version is Approved in the Model Package Group, automatically trigger the `DeploySageMakerModel` workflow (staging → prod).
+  - Wire EventBridge → Lambda → GitHub Actions (`repository_dispatch`) or call `deploy_stack.py` directly from Lambda.
+- Adding smoke/continuous test steps.
+- Basic monitoring: Enable CloudWatch logs/metrics export for the endpoint.
