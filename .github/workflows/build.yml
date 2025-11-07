@@ -1,7 +1,7 @@
 name: BuildSageMakerModel
 on:
   push:
-    branches: ['main', 'xgb-testing']
+    branches: ['main']
     paths:
       - pipelines/**
   workflow_dispatch:
