@@ -34,7 +34,7 @@ def main():
     args = parse_args()
     os.makedirs(args.model_dir, exist_ok=True)
 
-    pip_install("xgboost")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "xgboost==1.5.0"])
     import xgboost as xgb
 
     X_train, y_train = load_xy(args.train, "train.csv")
@@ -58,7 +58,8 @@ def main():
     bst = xgb.train(params=params, dtrain=dtrain, num_boost_round=args.num_round, evals=evals)
 
     # Save in SageMaker XGBoost serving format: model.tar.gz containing 'xgboost-model'
-    raw_model_path = os.path.join(args.model_dir, "xgboost-model")
+    # No ending = internal binary format (not ubj) in xgb 1.5-1. Will only work with 1.5-1 endpoint
+    raw_model_path = os.path.join(args.model_dir, "xgboost-model") 
     bst.save_model(raw_model_path)
     tar_path = os.path.join(args.model_dir, "model.tar.gz")
     with tarfile.open(tar_path, "w:gz") as tar:
