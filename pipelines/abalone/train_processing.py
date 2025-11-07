@@ -58,11 +58,11 @@ def main():
     bst = xgb.train(params=params, dtrain=dtrain, num_boost_round=args.num_round, evals=evals)
 
     # Save in SageMaker XGBoost serving format: model.tar.gz containing 'xgboost-model'
-    raw_model_path = os.path.join(args.model_dir, "xgboost-model.model")
+    raw_model_path = os.path.join(args.model_dir, "xgboost-model")
     bst.save_model(raw_model_path)
     tar_path = os.path.join(args.model_dir, "model.tar.gz")
     with tarfile.open(tar_path, "w:gz") as tar:
-        tar.add(raw_model_path, arcname="xgboost-model.model")
+        tar.add(raw_model_path, arcname="xgboost-model")
 
 if __name__ == "__main__":
     main()

@@ -42,11 +42,11 @@ if __name__ == "__main__":
     with tarfile.open(model_tar) as tar:
         tar.extractall(path=".")
 
-    model_path = "/opt/ml/processing/model/xgboost-model.model"
+    model_path = "/opt/ml/processing/model/xgboost-model"
 
     logger.debug("Loading xgboost model.")
     booster = xgboost.Booster()
-    booster.load_model("/opt/ml/processing/model/xgboost-model.model")
+    booster.load_model("/opt/ml/processing/model/xgboost-model")
 
     logger.debug("Reading test data.")
     test_path = "/opt/ml/processing/test/test.csv"
