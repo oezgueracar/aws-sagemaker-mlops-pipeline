@@ -16,25 +16,25 @@ Each commit with changes in the `pipelines/` folder triggers the GitHub workflow
 
 ## Results & Evidence
 
-1. Successful SageMaker pipeline execution
+1. **Successful SageMaker pipeline execution**
 
-    ![Amazon SageMaker and GitHub Actions Architecture](/img/successful-sagemaker-pipeline-execution.png)
+    <img src="img/successful-sagemaker-pipeline-execution.png" alt="Amazon SageMaker and GitHub Actions Architecture" width="40%"/>
 
     Note: The training step is a "Process data" step because the AWS free tier doesn't provide training quota. It's circumventing that by making the training step a process data step.
 
-2. Model Registry
+2. **Model Registry**
 
-    ![Amazon SageMaker and GitHub Actions Architecture](/img/model-registry.png)
+    <img src="img/model-registry.png" width="40%"/>
 
-3. GitHub CI/CD
+3. **GitHub CI/CD**
 
-    ![Amazon SageMaker and GitHub Actions Architecture](/img/github-cicd.png)
+    <img src="img/github-cicd.png" width="60%"/>
 
-4. Endpoints in service
+4. **Endpoints in service**
 
-    ![Amazon SageMaker and GitHub Actions Architecture](/img/sagemaker-endpoints-running.png)
+    <img src="img/sagemaker-endpoints-running.png" width="60%"/>
 
-5. Inference through production Endpoint
+5. **Inference through production Endpoint**
 
     Run the production endpoint from a Terminal. AWS CLI needs to be installed if run locally.
     Replace `type` with `cat` to run on bash instead of Windows. Make sure it runs on the correct region, otherwise also add the `--region <your-region>` parameter.
